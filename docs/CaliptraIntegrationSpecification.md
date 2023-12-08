@@ -70,9 +70,6 @@ The following table describes integration parameters.
 
 | **Defines** | **Defines file** | **Description** |
 | :--------- | :--------- | :--------- |
-| CALIPTRA_APB_ADDR_WIDTH | config_defines.svh | Width of the APB Address field. Default to 32. |
-| CALIPTRA_APB_DATA_WIDTH | config_defines.svh | Width of the APB Data field. Default to 32. |
-| CALIPTRA_APB_USER_WIDTH | config_defines.svh | Width of the APB PAUSER field. |
 | CALIPTRA_INTERNAL_TRNG  | config_defines.svh | Defining this enables the internal TRNG source. |
 | CALIPTRA_INTERNAL_UART  | config_defines.svh | Defining this enables the internal UART.        |
 | CALIPTRA_INTERNAL_QSPI  | config_defines.svh | Defining this enables the internal QSPI.        |
@@ -99,7 +96,7 @@ The following tables describe the interface signals.
 | PENABLE | 1 | Input | Synchronous to clk | Indicates the second and subsequent cycles. |
 | PWRITE | 1 | Input | Synchronous to clk | Indicates transfer is a write when high or a read when low. |
 | PWDATA | 32 | Input | Synchronous to clk | Write data bus |
-| PAUSER | APB_USER_REQ_WIDTH | Input | Synchronous to clk | Sideband signal indicating requestor ID for transfer. |
+| PAUSER | 32 | Input | Synchronous to clk | Sideband signal indicating requestor ID for transfer. |
 | PREADY | 1 | Output | Synchronous to clk | Used to extend an APB transfer by completer. |
 | PRDATA | 32 | Output | Synchronous to clk | Read data bus |
 | PSLVERR | 1 | Output | Synchronous to clk | Transfer error |
@@ -448,9 +445,9 @@ SHA\_LOCK register is set on read. A read of 0 indicates the SHA was unlocked an
 SHA\_MODE register sets the mode of operation for the SHA.
 
 See the Hardware specification for additional details.
-* 2’b00 - SHA384 streaming mode 
-* 2’b01 - SHA512 streaming mode 
-* 2’b10 - SHA384 mailbox mode (Caliptra only, invalid for SoC requests) 
+* 2’b00 - SHA384 streaming mode
+* 2’b01 - SHA512 streaming mode
+* 2’b10 - SHA384 mailbox mode (Caliptra only, invalid for SoC requests)
 * 2’b11 - SHA512 mailbox mode (Caliptra only, invalid for SoC requests)
 
 ## SoC Sender Protocol
@@ -593,7 +590,7 @@ Note that the example assumes that data and ECC codes are in non-deterministic b
     2. SoC can look at the Caliptra fatal error register for error source.
     3. Assume Caliptra can report a fatal error at any time.
     4. Fatal errors are generally hardware in nature. SoC may attempt to recover by full reset of the entire SoC, or can move on and know that Caliptra will be unavailable for the remainder of the current boot.
-    5. We cannot assume that uncorrectable errors will be correctly detected by Caliptra, ECC fatal errors shall be reported by SOC MCRIP. 
+    5. We cannot assume that uncorrectable errors will be correctly detected by Caliptra, ECC fatal errors shall be reported by SOC MCRIP.
 
 # SoC integration requirements
 
@@ -652,7 +649,7 @@ The following table describes SoC integration requirements.
 
 | Module                    | Warning | Line No. | Description |
 | :--------- | :--------- | :--------- | :--------- |
-| sha512_acc_top            | Empty netlist for always_comb                                                             | 417      |Unused logic (no load)| 
+| sha512_acc_top            | Empty netlist for always_comb                                                             | 417      |Unused logic (no load)|
 | ecc_scalar_blinding       | Netlist for always_ff block does not contain flip flop                                    | 301      |Output width is smaller than internal signals, synthesis optimizes away the extra internal flops with no loads|
 | sha512_masked_core        | "masked_carry" is read before being assigned. Synthesized result may not match simulation | 295, 312 ||
 | ecc_montgomerymultiplier  | Netlist for always_ff block does not contain flip flop                                    | 274, 326 |Output width is smaller than internal signals, synthesis optimizes away the extra internal flops with no loads|
@@ -687,7 +684,7 @@ The following code snippet and schematic diagram illustrate JTAG originating CDC
     * Pseudo-static: wr\_data, wr\_addr
         * cdc signal reg\_wr\_data  -module dmi\_wrapper -stable
         * cdc signal reg\_wr\_addr  -module dmi\_wrapper -stable
-* The core clock frequency must be at least twice the TCK clock frequency for the JTAG data to pass correctly through the synchronizers. 
+* The core clock frequency must be at least twice the TCK clock frequency for the JTAG data to pass correctly through the synchronizers.
 
 ## CDC constraints
 * cdc report scheme two\_dff -severity violation
