@@ -585,12 +585,11 @@ Caliptra will not initiate any mailbox commands that require a response from the
 
 1. On mailbox\_data\_avail assertion, the receiver reads the COMMAND register.
 2. Receiver reads the DLEN register.
-3. Receiver reads the CMD register.
-4. Receiver reads the MBOX DATAOUT register.
+3. Receiver reads the MBOX DATAOUT register.
     * Continue reading MBOX DATAOUT register until DLEN bytes are read.
-5. If a response is required, the receiver can populate the mailbox with the response by updating the DLEN register and writing to DATAIN with the response. (NOTE: The new DLEN value will not take effect until control is returned to the sender via write to the status register).
-6. Set the mailbox status register appropriately to hand control back to the sender.
-7. The sender will reset the EXECUTE register.
+4. If a response is required, the receiver can populate the mailbox with the response by updating the DLEN register and writing to DATAIN with the response. (NOTE: The new DLEN value will not take effect until control is returned to the sender via write to the status register).
+5. Set the mailbox status register appropriately to hand control back to the sender.
+6. The sender will reset the EXECUTE register.
     * This releases the LOCK on the mailbox.
 
 The following figure shows the receiver protocol flow.
@@ -899,7 +898,6 @@ Table 7 indicates the signals contained in the memory interface. Direction is re
 ## SRAM timing behavior
 * [Writes] Input wren signal is asserted simultaneously with input data and address. Input data is stored at the input address 1 clock cycle later.
 * [Reads] Input clock enable signal is asserted simultaneously with input address. Output data is available 1 clock cycle later from a flip-flop register stage.
-* [Writes] Input wren signal is asserted simultaneously with input data and address. Data is stored at the input address 1 clock cycle later.
 
 The following figure shows the SRAM interface timing.
 
