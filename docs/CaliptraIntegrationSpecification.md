@@ -334,7 +334,7 @@ Control registers and fuses are documented on GitHub.
 
 Fuses may only be written during the BOOT_FUSE state of the Boot FSM and require a cptra\_pwrgood to be recycled to be written again.
 
-After all fuses are written, the fuse done register at the end of the fuse address space must be set to 1 to lock the fuse writes and to proceed with the boot flow.
+After all fuses are written, the fuse done register (`CPTRA_FUSE_WR_DONE`) must be set to 1 to lock the fuse writes and to proceed with the boot flow.
 
 Although fuse values (and the fuse done register) persist across a warm reset, SoC is still required to perform a write to the fuse done register while in the BOOT\_FUSE state in order to complete the bringup from reset. See [Boot FSM](#boot-fsm) for further details.
 
@@ -343,6 +343,7 @@ Although fuse values (and the fuse done register) persist across a warm reset, S
 - `SS_DBG_SERVICE_REG_RSP`
 - `SS_SOC_DBG_UNLOCK_LEVEL`
 - `SS_GENERIC_FW_EXEC_CTRL`
+- `SS_OCP_LOCK_CTRL`
 
 The remaining register `SS_DBG_SERVICE_REG_REQ` is initialized by the same SoC agent as fuses and is the only agent that can make subsystem debug service requests. 
 
@@ -358,7 +359,7 @@ Caliptra provides 1 programmable register that SoC can set at boot time to limit
 
 #### FUSE AXI USER Parameter override
 
-Another option for limiting access to the fuse registers is the integration time parameter, which overrides the programmable AXI_USER register. At integration time, the CPTRA_SET_FUSE_AXI_USER_INTEG parameter can be set to 1 which enables the corresponding CPTRA_FUSE_VALID_AXI_USER parameter to override the programmable register. If CPTRA_SET_FUSE_AXI_USER_INTEG is set to ‘0, then access to the fuse registers by any agent is allowed. If this parameter is set to ‘1, only an agent whose AXI USER matches the parameter CPTRA_FUSE_VALID_AXI_USER can write to fuse registers. Any access by an unallowed AXI USER will return an AXI error response.
+Another option for limiting access to the fuse registers is the integration time parameter, which overrides the programmable AXI_USER register. At integration time, the CPTRA_SET_FUSE_AXI_USER_INTEG parameter can be set to 1 which enables the corresponding CPTRA_FUSE_VALID_AXI_USER parameter to override the programmable register. If CPTRA_SET_FUSE_AXI_USER_INTEG is set to ‘0, then access to the fuse registers is controlled by the programmable registers described above. If this parameter is set to ‘1, only an agent whose AXI USER matches the parameter CPTRA_FUSE_VALID_AXI_USER can write to fuse registers. Any access by an unallowed AXI USER will return an AXI error response.
 
 ## Interface rules
 
@@ -1017,7 +1018,7 @@ For additional information, see [Caliptra assets and threats](https://github.com
 | SRAMs-4                         | SoC shall ensure SRAM content is only destroyed on powergood cycling to accommodate warm resets and hitless updates.                                                                                                                                                                                                 | Functional Requirement                           |
 | SRAMs-5                         | SoC shall only perform SRAM repair on powergood events and prior to cptra\_rst\_b deassertion. SoC shall also ensure that SRAMs are initialized with all 0 data during powergood events, and prior to cptra\_rst\_b deassertion. Necessary for warm resets and hitless updates.                                | Functional Requirement                           |
 | Backend-convergence-1           | Caliptra supports frequencies up to 400MHz 0.72V using an industry standard, advanced technology node as of 2025 April. Integrator designs must also achieve backend convergence.                                                                                                                                    | Functional Requirement                           |
-| Power-saving-1                  | Caliptra clock gating shall be controlled by Caliptra firmware alone. SoC is provided a global clock gating enable signal (and a register) to control.                                                                                                                                                               | Required by Caliptra threat model                |
+| Power-saving-1                  | Caliptra clock gating shall be controlled by Caliptra firmware alone. SoC is provided a global clock gating enable register (`CPTRA_CLK_GATING_EN`) to control.                                                                                                                                                               | Required by Caliptra threat model                |
 | Power-saving-2                  | SoC shall not power-gate Caliptra independently of the entire SoC.                                                                                                                                                                                                                                                   | Required by Caliptra threat model                |
 | AXI-USER-1                      | SoC shall drive AXI USER input for all AXI requests that have a route to Caliptra (e.g. through the AXI interconnect). CANNOT use value 0xFFFFFFFF. This is reserved for Caliptra-internal usage.                                                                                                                    | Required by Caliptra threat model                |
 | AXI-USER-2                      | Assigned AXI USER values must be unique for each agent on the interconnect. All SoC AXI agents that have an access path to Caliptra AXI subordinate (or any Caliptra Subsystem components, when using the Subsystem mode) via AXI must either (a) generate AXI transactions using an AXI_USER value that is unique from that used by all other AXI agents on the interconnect or (b) generate AXI transactions using an AXI_USER value that will never overlap with the configured valid AXI users, if the agent is not a valid mailbox user, valid fuse user, or valid trng user. For example, if any AXI agents utilize the AxUSER field for any type of dynamic metadata and are on the same AXI interconnect as Caliptra, all possible AxUSER values from those agents should be avoided for assigning Caliptra VALID AXI USER values. Because AXI AxUSER signals are used to identify accessing agents and enforce access rules, this rule ensures that no single agent may ever generate an AXI transaction that identifies it as originating from a different agent.  | Required by Caliptra threat model                |
