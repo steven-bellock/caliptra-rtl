@@ -141,26 +141,27 @@ The following tables describe the interface signals.
 | :--------- | :--------- | :--------- | :--------- | :--------- |
 | mbox_sram_cs | 1 | Output | Synchronous to clk | Chip select for mbox SRAM  |
 | mbox_sram_we | 1 | Output | Synchronous to clk | Write enable for mbox SRAM |
-| mbox_sram_addr | MBOX_ADDR_W | Output | Synchronous to clk | Addr lines for mbox SRAM |
-| mbox_sram_wdata | MBOX_DATA_W | Output | Synchronous to clk | Write data for mbox SRAM |
-| mbox_sram_rdata | MBOX_DATA_W | Input | Synchronous to clk | Read data for mbox SRAM |
+| mbox_sram_addr | CPTRA_MBOX_ADDR_W | Output | Synchronous to clk | Addr lines for mbox SRAM |
+| mbox_sram_wdata | CPTRA_MBOX_DATA_AND_ECC_W | Output | Synchronous to clk | Write data for mbox SRAM, including ECC bits |
+| mbox_sram_rdata | CPTRA_MBOX_DATA_AND_ECC_W | Input | Synchronous to clk | Read data for mbox SRAM, including ECC bits |
 | imem_cs | 1 | Output | Synchronous to clk | Chip select for imem SROM |
 | imem_addr | IMEM_ADDR_WIDTH | Output | Synchronous to clk | Addr lines for imem SROM |
 | imem_rdata | IMEM_DATA_WIDTH | Input | Synchronous to clk | Read data for imem SROM |
-| iccm_clken | ICCM_NUM_BANKS | Input | Synchronous to clk | Per-bank clock enable |
-| iccm_wren_bank | ICCM_NUM_BANKS | Input | Synchronous to clk | Per-bank write enable |
-| iccm_addr_bank | ICCM_NUM_BANKS x (ICCM_BITS-4) | Input | Synchronous to clk | Per-bank address |
-| iccm_bank_wr_data | ICCM_NUM_BANKS x 32 | Input | Synchronous to clk | Per-bank input data |
-| iccm_bank_wr_ecc  | ICCM_NUM_BANKS x 7  | Input | Synchronous to clk | Per-bank input ecc  |
-| iccm_bank_dout | ICCM_NUM_BANKS x 32 | Output | Synchronous to clk | Per-bank output data |
-| iccm_bank_ecc  | ICCM_NUM_BANKS x 7  | Output | Synchronous to clk | Per-bank output ecc  |
-| dccm_clken | DCCM_NUM_BANKS | Input | Synchronous to clk | Per-bank clock enable |
-| dccm_wren_bank | DCCM_NUM_BANKS | Input | Synchronous to clk | Per-bank write enable |
-| dccm_addr_bank | DCCM_NUM_BANKS x (DCCM_BITS-4) | Input | Synchronous to clk | Per-bank address |
-| dccm_wr_data_bank | DCCM_NUM_BANKS x DCCM_DATA_WIDTH | Input | Synchronous to clk | Per-bank input data |
-| dccm_wr_ecc_bank | DCCM_NUM_BANKS x DCCM_ECC_WIDTH | Input | Synchronous to clk | Per-bank input ecc |
-| dccm_bank_dout | DCCM_NUM_BANKS x DCCM_DATA_WIDTH | Output | Synchronous to clk | Per-bank output data |
-| dccm_bank_ecc  | DCCM_NUM_BANKS x DCCM_ECC_WIDTH | Output | Synchronous to clk | Per-bank output ecc |
+| clk | 1 | Output | | Clock for the ICCM and DCCM SRAMs |
+| iccm_clken | ICCM_NUM_BANKS | Output | Synchronous to clk | Per-bank clock enable |
+| iccm_wren_bank | ICCM_NUM_BANKS | Output | Synchronous to clk | Per-bank write enable |
+| iccm_addr_bank | ICCM_NUM_BANKS x (ICCM_BITS-4) | Output | Synchronous to clk | Per-bank address |
+| iccm_bank_wr_data | ICCM_NUM_BANKS x 32 | Output | Synchronous to clk | Per-bank write data |
+| iccm_bank_wr_ecc  | ICCM_NUM_BANKS x 7  | Output | Synchronous to clk | Per-bank write ecc  |
+| iccm_bank_dout | ICCM_NUM_BANKS x 32 | Input | Synchronous to clk | Per-bank read data |
+| iccm_bank_ecc  | ICCM_NUM_BANKS x 7  | Input | Synchronous to clk | Per-bank read ecc  |
+| dccm_clken | DCCM_NUM_BANKS | Output | Synchronous to clk | Per-bank clock enable |
+| dccm_wren_bank | DCCM_NUM_BANKS | Output | Synchronous to clk | Per-bank write enable |
+| dccm_addr_bank | DCCM_NUM_BANKS x (DCCM_BITS-4) | Output | Synchronous to clk | Per-bank address |
+| dccm_wr_data_bank | DCCM_NUM_BANKS x DCCM_DATA_WIDTH | Output | Synchronous to clk | Per-bank write data |
+| dccm_wr_ecc_bank | DCCM_NUM_BANKS x DCCM_ECC_WIDTH | Output | Synchronous to clk | Per-bank write ecc |
+| dccm_bank_dout | DCCM_NUM_BANKS x DCCM_DATA_WIDTH | Input | Synchronous to clk | Per-bank read data |
+| dccm_bank_ecc  | DCCM_NUM_BANKS x DCCM_ECC_WIDTH | Input | Synchronous to clk | Per-bank read ecc |
 
 *Table 8: Adams-Bridge SRAM Interface*
 
@@ -195,6 +196,7 @@ The table below details the interface required for each SRAM. Driver direction i
 | jtag_tdi | 1 | Input | Synchronous to jtag_tck | |
 | jtag_trst_n | 1 | Input | Asynchronous assertion<br>Synchronous deassertion to jtag_tck | |
 | jtag_tdo | 1 | Output | Synchronous to jtag_tck | |
+| jtag_tdoEn | 1 | Output | Synchronous to jtag_tck | TDO output enable for the pad; asserted while the TAP is in the Shift-DR or Shift-IR state |
 
 *Table 10: RISC-V Trace interface*
 Trace ports have been directly connected from Caliptra's instance of the VeeR-EL2 RISC-V core to the top-level. However, use of these ports has not been validated. Integrators shall leave these ports unconnected. Support for these ports may be added in a future release.
@@ -891,7 +893,7 @@ The following memories are exported:
 * Instruction Closely-Coupled Memory (ICCM)
 * Data Closely Coupled Memory (DCCM)
 
-Table 7 indicates the signals contained in the memory interface. Direction is relative to the exported memory wrapper that is instantiated outside of the Caliptra subsystem (that is, from the testbench perspective).
+Table 7 indicates the signals contained in the memory interface. Direction is relative to Caliptra; the exported memory wrapper that is instantiated outside of the Caliptra subsystem (for example, in the testbench) sees the opposite direction.
 
 ## SRAM timing behavior
 * [Writes] Input wren signal is asserted simultaneously with input data and address. Input data is stored at the input address 1 clock cycle later.
