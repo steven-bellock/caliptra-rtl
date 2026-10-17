@@ -61,7 +61,7 @@ The following table describes integration parameters.
 
 | **Defines** | **Defines file** | **Description** |
 | :--------- | :--------- | :--------- |
-| CALIPTRA_FUSE_GRANULARITY_32| config_defines.svh   | Defining this means fuse row granularity is 32-bits. If not defined it means fuse row granularity is 64 bits. If defined, the ``CPTRA_HW_CONFIG.CALIPTRA_FUSE_GRANULARITY_32`` SOC_IFC register bit is set to 1 for 32-bit granularity. Otherwise, it is set to 0 for 64-bit granularity. This is used by Caliptra ROM for UDS and Field Entropy provisioning.|
+| CALIPTRA_FUSE_GRANULARITY_32| config_defines.svh   | Defining this means fuse row granularity is 32-bits. If not defined it means fuse row granularity is 64 bits. If defined, the `CPTRA_HW_CONFIG.Fuse_Granularity` SOC_IFC register bit is set to 1 for 32-bit granularity. Otherwise, it is set to 0 for 64-bit granularity. This is used by Caliptra ROM for UDS and Field Entropy provisioning.|
 | CALIPTRA_INTERNAL_TRNG      | config_defines.svh   | Defining this enables the internal TRNG source. This is recommended to be set to 1 in Core (Passive) mode and must be set to 1 in Subsystem mode. |
 | CALIPTRA_MODE_SUBSYSTEM     | config_defines.svh   | Defining this enables Caliptra to operate in Subsystem mode. This includes features such as the debug unlock flow, AXI DMA (for recovery flow), Subsystem-level straps, among other capabilites. See [Caliptra Subsystem Architectural Flows](https://github.com/chipsalliance/Caliptra/blob/main/doc/Caliptra.md#caliptra-subsystem-architectural-flows) for more details |
 | USER_ICG                    | config_defines.svh   | If added by an integrator, provides the name of the custom clock gating module that is used in [clk_gate.sv](../src/libs/rtl/clk_gate.sv). USER_ICG replaces the clock gating module, CALIPTRA_ICG, defined in [caliptra_icg.sv](../src/libs/rtl/caliptra_icg.sv). This substitution is only performed if integrators also define TECH_SPECIFIC_ICG. |
@@ -512,7 +512,7 @@ The AXI_USER bits are used by the SoC to identify which device is accessing the 
 To save SRAM area when Caliptra operates in Subsystem mode, the mailbox (MBOX) SRAM is reduced to **16 KiB**.  
 Instead of passing images directly to Caliptra through the mailbox, the SoC can configure an external staging SRAM that Caliptra fetches from and processes.
 
-Caliptra Core receives the base address of this staging area through the **SOC_IFC** register `SS_EXTERNAL_STAGING_AREA_BASE_ADDR`. The address must be an AXI address accessable via the Caliptra DMA controller. This register is exposed as a strap ``strap_ss_external_staging_area_base_addr`` and is overridable by SW until ``FUSE_DONE`` is set. 
+Caliptra Core receives the base address of this staging area through the **SOC_IFC** registers `SS_EXTERNAL_STAGING_AREA_BASE_ADDR_L` and `SS_EXTERNAL_STAGING_AREA_BASE_ADDR_H`. The address must be an AXI address accessable via the Caliptra DMA controller. These registers are initialized from the strap `strap_ss_external_staging_area_base_addr` and may be overwritten by the SoC until `CPTRA_FUSE_WR_DONE` is set. 
 
 For hitless updates or other image-processing operations, the Caliptra mailbox should be used to:
 
@@ -551,10 +551,10 @@ Mailboxes are generic data-passing structures with a specific protocol that defi
 4. 	Requester writes data packets to the MBOX DATAIN register.
 5. 	Requester writes to the EXECUTE register.
 6. 	Requester reads the STATUS register. Status can return:
-    1. CMD\_BUSY - 2’b00 – Indicates the requested command is still in progress
-    2. DATA\_READY - 2’b01 – Indicates the return data is in the mailbox for requested command
-    3. CMD\_COMPLETE- 2’b10 – Indicates the successful completion of the requested command
-    4. CMD\_FAILURE- 2’b11 – Indicates the requested command failed
+    1. CMD\_BUSY - 4’h0 – Indicates the requested command is still in progress
+    2. DATA\_READY - 4’h1 – Indicates the return data is in the mailbox for requested command
+    3. CMD\_COMPLETE- 4’h2 – Indicates the successful completion of the requested command
+    4. CMD\_FAILURE- 4’h3 – Indicates the requested command failed
 7. Requester reads the response if DATA\_READY was the status.
 8. Requester resets the EXECUTE register to release the lock.
 
@@ -603,12 +603,12 @@ The following figure shows the receiver protocol flow.
 When Caliptra sets the tap_mode register, the mailbox will transition from RDY_FOR_DATA to EXECUTE_TAP instead of EXECUTE_SOC.
 This will pass control of the mailbox to the TAP. TAP will follow the **Receiving data from the mailbox** protocol detailed above.
 
-When TAP acquires the mailbox lock, the mailbox will transition from RDY_FOR_DATA to EXECUTE_UC. This transition results in the assertion of the internal interrupt signal `uc_mailbox_data_avail` to UC.
+When TAP acquires the mailbox lock, the mailbox will transition from RDY_FOR_DATA to EXECUTE_UC. This transition results in the assertion of the internal interrupt signal `uc_mbox_data_avail` to UC.
 This will pass control of the mailbox to the UC. UC will follow the **Receiving data from the mailbox** protocol detailed above.
 
 ## Mailbox arbitration
 
-From a mailbox protocol perspective, as long as CPTRA\_VALID\_AXI\_USER registers carry valid requesters, mailbox lock can be obtained by any of those valid requesters but only one of them at any given time. While the mailbox flow is happening, all other requesters will not get a grant.
+From a mailbox protocol perspective, as long as CPTRA\_MBOX\_VALID\_AXI\_USER registers carry valid requesters, mailbox lock can be obtained by any of those valid requesters but only one of them at any given time. While the mailbox flow is happening, all other requesters will not get a grant.
 
 A request for lock that is denied due to firmware having the lock results in an interrupt to the firmware. Firmware can optionally use this interrupt to release the lock.
 
@@ -762,18 +762,18 @@ configured for FIPS compliance, but rather to ensure that the quality of the
 entropy output is sufficient for ROM operation.
 
 The default self-test parameters are provided to the ROM via the
-`SS_STRAP_GENERIC[2]`, `CPTRA_iTRNG_ENTROPY_CONFIG0`, and
-`CPTRA_iTRNG_ENTROPY_CONFIG1` registers.
+`CPTRA_iTRNG_ENTROPY_CONFIG_0`, `CPTRA_iTRNG_ENTROPY_CONFIG_1`, and
+`CPTRA_iTRNG_ENTROPY_CONFIG_2` registers.
 
 The ROM configures self tests with the following parameters.
 
 ### Adaptive test
 
 The adaptive self-test thresholds are configured as follows if the high and low
-thresholds provided in the `CPTRA_iTRNG_ENTROPY_CONFIG0` are non-zero.
+thresholds provided in the `CPTRA_iTRNG_ENTROPY_CONFIG_0` are non-zero.
 
-`entropy_src.ADAPTP_HI_THRESHOLDS.FIPS_THRESH` = `CPTRA_iTRNG_ENTROPY_CONFIG0.HIGH_THRESHOLD`\
-`entropy_src.ADAPTP_LO_THRESHOLDS.FIPS_THRESH` = `CPTRA_iTRNG_ENTROPY_CONFIG0.LOW_THRESHOLD`
+`entropy_src.ADAPTP_HI_THRESHOLDS.FIPS_THRESH` = `CPTRA_iTRNG_ENTROPY_CONFIG_0.high_threshold`\
+`entropy_src.ADAPTP_LO_THRESHOLDS.FIPS_THRESH` = `CPTRA_iTRNG_ENTROPY_CONFIG_0.low_threshold`
 
 Otherwise, the ROM will use 75% and 25% of the FIPS window size for the default
 high and low thresholds.
@@ -791,10 +791,10 @@ counts repetitions per physical noise source (REPCNT); and, another
 that counts repetitions at the symbol level (REPCNTS). The ROM configures
 the REPCNT version.
 
-The self-test is configured as follows if the `CPTRA_iTRNG_ENTROPY_CONFIG1`
+The self-test is configured as follows if the `CPTRA_iTRNG_ENTROPY_CONFIG_1`
 register is not zero.
 
-`entropy_src.REPCNT_THRESHOLDS.FIPS_THRESH` = `CPTRA_iTRNG_ENTROPY_CONFIG1.REPETITION_COUNT`
+`entropy_src.REPCNT_THRESHOLDS.FIPS_THRESH` = `CPTRA_iTRNG_ENTROPY_CONFIG_1.repetition_count`
 
 Otherwise, the ROM will use a default value configuration:
 
@@ -841,13 +841,13 @@ as a binary stream, counting the occurrences of '1's over the selected window.
 > Note: The `critbinom` function (critical binomial distribution function) is
 > implemented by most spreadsheet applications.
 
-`CPTRA_iTRNG_ENTROPY_CONFIG0.high_threshold` =  $1 + critbinom(W, 2^{-H}, 1 - α)$\
-`CPTRA_iTRNG_ENTROPY_CONFIG0.high_threshold` =  $1 + critbinom(2048, 2^{-H}, 1 - 2^{-40})$\
-`CPTRA_iTRNG_ENTROPY_CONFIG0.high_threshold` =  1591
+`CPTRA_iTRNG_ENTROPY_CONFIG_0.high_threshold` =  $1 + critbinom(W, 2^{-H}, 1 - α)$\
+`CPTRA_iTRNG_ENTROPY_CONFIG_0.high_threshold` =  $1 + critbinom(2048, 2^{-H}, 1 - 2^{-40})$\
+`CPTRA_iTRNG_ENTROPY_CONFIG_0.high_threshold` =  1591
 
-`CPTRA_iTRNG_ENTROPY_CONFIG0.low_threshold` =  W - `CPTRA_iTRNG_ENTROPY_CONFIG0.high_threshold`\
-`CPTRA_iTRNG_ENTROPY_CONFIG0.low_threshold` =  2048 - `CPTRA_iTRNG_ENTROPY_CONFIG0.high_threshold`\
-`CPTRA_iTRNG_ENTROPY_CONFIG0.low_threshold` =  457
+`CPTRA_iTRNG_ENTROPY_CONFIG_0.low_threshold` =  W - `CPTRA_iTRNG_ENTROPY_CONFIG_0.high_threshold`\
+`CPTRA_iTRNG_ENTROPY_CONFIG_0.low_threshold` =  2048 - `CPTRA_iTRNG_ENTROPY_CONFIG_0.high_threshold`\
+`CPTRA_iTRNG_ENTROPY_CONFIG_0.low_threshold` =  457
 
 ### Repetition count threshold
 
@@ -865,7 +865,7 @@ $$
 \end{aligned}
 $$
 
-`CPTRA_iTRNG_ENTROPY_CONFIG1.repetition_count` = `RcThresh` = 81
+`CPTRA_iTRNG_ENTROPY_CONFIG_1.repetition_count` = `RcThresh` = 81
 
 ### FIPS Compliance
 
@@ -881,7 +881,7 @@ SRAMs are instantiated at the SoC level. Caliptra provides the interface to expo
 
 SRAM repair logic (for example, BIST) and its associated fuses, which are proprietary to companies and their methodologies, is implemented external to the Caliptra boundary.
 
-SRAMs must NOT go through BIST or repair flows across a “warm reset”. SoC shall perform SRAM repair during a powergood cycling event ("cold reset") and only prior to deasserting cptra\_rst\_b. During powergood cycling events, SoC shall also initialize all entries in the SRAM to a 0 value, prior to deasserting caliptra\_rst\_b.
+SRAMs must NOT go through BIST or repair flows across a “warm reset”. SoC shall perform SRAM repair during a powergood cycling event ("cold reset") and only prior to deasserting cptra\_rst\_b. During powergood cycling events, SoC shall also initialize all entries in the SRAM to a 0 value, prior to deasserting cptra\_rst\_b.
 
 Mailbox SRAM is implemented with ECC protection. Data width for the mailbox is 32-bits, with 7 parity bits for a Hamming-based SECDED (single-bit error correction and double-bit error detection).
 
@@ -1015,7 +1015,7 @@ For additional information, see [Caliptra assets and threats](https://github.com
 | SRAMs-2                         | SoC shall size SRAMs to account for SECDED. Exception for Adams-Bridge SRAMs that do not utilize SECDED.                                                                                                                                                                                                             | Functional Requirement                           |
 | SRAMs-3                         | SoC shall write-protect fuses that characterize the SRAM.                                                                                                                                                                                                                                                            | Required by Caliptra threat model |
 | SRAMs-4                         | SoC shall ensure SRAM content is only destroyed on powergood cycling to accommodate warm resets and hitless updates.                                                                                                                                                                                                 | Functional Requirement                           |
-| SRAMs-5                         | SoC shall only perform SRAM repair on powergood events and prior to caliptra\_rst\_b deassertion. SoC shall also ensure that SRAMs are initialized with all 0 data during powergood events, and prior to caliptra\_rst\_b deassertion. Necessary for warm resets and hitless updates.                                | Functional Requirement                           |
+| SRAMs-5                         | SoC shall only perform SRAM repair on powergood events and prior to cptra\_rst\_b deassertion. SoC shall also ensure that SRAMs are initialized with all 0 data during powergood events, and prior to cptra\_rst\_b deassertion. Necessary for warm resets and hitless updates.                                | Functional Requirement                           |
 | Backend-convergence-1           | Caliptra supports frequencies up to 400MHz 0.72V using an industry standard, advanced technology node as of 2025 April. Integrator designs must also achieve backend convergence.                                                                                                                                    | Functional Requirement                           |
 | Power-saving-1                  | Caliptra clock gating shall be controlled by Caliptra firmware alone. SoC is provided a global clock gating enable signal (and a register) to control.                                                                                                                                                               | Required by Caliptra threat model                |
 | Power-saving-2                  | SoC shall not power-gate Caliptra independently of the entire SoC.                                                                                                                                                                                                                                                   | Required by Caliptra threat model                |
