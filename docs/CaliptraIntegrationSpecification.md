@@ -1064,15 +1064,15 @@ As described in the Caliptra Hardware Specification, when operating in OCP LOCK 
   Must be locked after execution (like other DOE flows). ROM must run the HEK DOE flow even in non-LOCK contexts to lock it. Reset only by hard reset.
 - **Derivations & locking**:
   - Derive the MDK to **KV16**, then set the **lock_wr** control bit of KV16.
-  - If OCP LOCK is enabled, derive **HEK** to **KV22**, then set the **lock_wr** control bit of KV23.
-    - Perform this **before** setting `OCP_LOCK_IN_PROGRESS` since HEK derivation depends on the **HEK seed** and **standard CDI derivatives** (from standard KV slots).
+  - If OCP LOCK is enabled, derive **HEK** to **KV22**, then set the **lock_wr** control bit of KV22.
+    - Perform this **before** setting `SS_OCP_LOCK_CTRL.LOCK_IN_PROGRESS` since HEK derivation depends on the **HEK seed** and **standard CDI derivatives** (from standard KV slots).
 - **Setting lock state:**  
-  If OCP LOCK is enabled, ROM **MUST** set `OCP_LOCK_IN_PROGRESS` before transitioning to the First Mutable Code (FMC) image.
+  If OCP LOCK is enabled, ROM **MUST** set `SS_OCP_LOCK_CTRL.LOCK_IN_PROGRESS` before transitioning to the First Mutable Code (FMC) image.
 - **KV23 usage constraints:**  
   Never attempt to write anything to **KV23** except **MEK** (produced by AES).
   - DOE will flag an error and **stall** if a write to **KV23** is attempted while OCP LOCK is enabled. Note that this differs from other cryptographic engines, which use the SS_OCP_LOCK_CTRL.LOCK_IN_PROGRESS bit to enforce the respective ruleset. This is because HEK seed deobfuscation is performed by the ROM prior to setting LOCK_IN_PROGRESS.
 - **DMA programming with KV:**  
-  The programmed byte count must match the value on the input strap_ss_key_release_key_size strap.  The programmed destination address must match the value on the input strap_ss_key_release_base_addr. Violation of either of these rules will trigger a command decode error in the DMA.
+  The programmed byte count must match the value in the `SS_KEY_RELEASE_SIZE` register.  The programmed destination address must match the value in the `SS_KEY_RELEASE_BASE_ADDR_L`/`SS_KEY_RELEASE_BASE_ADDR_H` registers. These registers are initialized from the strap_ss_key_release_key_size and strap_ss_key_release_base_addr straps and may be overwritten by the SoC until `CPTRA_FUSE_WR_DONE` is set. Violation of either of these rules will trigger a command decode error in the DMA.
 - **KV filtering rules:**  
   Cryptographic operations attempting to read from a Standard Key Vault slot and write a result to a LOCK Key Vault slot will fail (the same rule holds for the LOCK Key Vault slot → Standard Key Vault slot path). The error status is reported as a Key Vault Write failure in the respective cryptographic engine's register block.
 - **AES API updates:**  
@@ -1083,7 +1083,7 @@ As described in the Caliptra Hardware Specification, when operating in OCP LOCK 
 - **Strap validation:**  
   Read and confirm valid values for:
   - [SS_KEY_RELEASE_BASE_ADDR](https://chipsalliance.github.io/caliptra-rtl/main/internal-regs/?p=clp.soc_ifc_reg.SS_KEY_RELEASE_BASE_ADDR_L)
-  - [KEY_RELEASE_KEY_SIZE](https://chipsalliance.github.io/caliptra-rtl/main/internal-regs/?p=clp.soc_ifc_reg.SS_KEY_RELEASE_SIZE)
+  - [SS_KEY_RELEASE_SIZE](https://chipsalliance.github.io/caliptra-rtl/main/internal-regs/?p=clp.soc_ifc_reg.SS_KEY_RELEASE_SIZE)
 - **Firmware must clear any obfuscated MEK from memory immediately after use.**
 
 ## Integrator RTL modification requirements
