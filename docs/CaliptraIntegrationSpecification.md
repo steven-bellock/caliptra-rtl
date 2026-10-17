@@ -1337,9 +1337,9 @@ The fifo load and wr_data equations are as follows:
 <span style="font-family: Consolas;">
   assign pfifo_bypass_push = !es_bypass_mode ? 1'b0 :
                              fw_ov_mode_entropy_insert ? fw_ov_fifo_wr_pulse :
-                             pfifo_postht_not_empty;
+                             sfifo_distr_not_empty;
   assign pfifo_bypass_wdata = fw_ov_mode_entropy_insert ? fw_ov_wr_data :
-                              pfifo_postht_rdata;
+                              sfifo_distr_rdata;
 </span>
 
 <br>
@@ -1352,8 +1352,8 @@ The following scenarios can occur.
 | #Case | *es_bypass_mode* | *fw_ov_mode_entropy_insert* | *pfifo_bypass_push* | *pfifo_bypass_wdata* | Comment |
 | ------| ---------------- | --------------------------- | ------------------- | -------------------- | ------- |
 | 1 | 0 | don't care | 0                     | don't care           | No RDC violations, since the recirculation mux on data_q (pink on lower right side) prevents the flop from loading.                                              |
-| 2 | 1 | 0          | *pfifo_postht_rdata*  | *pfifo_postht_rdata* | No RDC violations, since recirculation mux switches to the leg that is on the same reset domain (shown in purple on left side)                                   |
-| 3 | 0 | 1          | *fw_ov_fifo_wr_pulse* | *fw_ov_wr_data*      | RDC violations are suppressed because *fw_ov_fifo_wr_pulse* = 0 (the red data lines on *cptra_uc_rst_b* are not able to reach *data_q* because *load_data* is 0) |
+| 2 | 1 | 0          | *sfifo_distr_not_empty* | *sfifo_distr_rdata* | No RDC violations, since recirculation mux switches to the leg that is on the same reset domain (shown in purple on left side)                                   |
+| 3 | 1 | 1          | *fw_ov_fifo_wr_pulse* | *fw_ov_wr_data*      | RDC violations are suppressed because *fw_ov_fifo_wr_pulse* = 0 (the red data lines on *cptra_uc_rst_b* are not able to reach *data_q* because *load_data* is 0) |
 
 Referring to the preceding table, if it can be ensured that *fw_ov_fifo_wr_pulse* is 0 when *cptra_uc_rst_b* is asserted, RDC crossings (Case #3) can be avoided. This condition is described in the preceding Constraints section.
 
