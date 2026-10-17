@@ -1166,7 +1166,7 @@ In an unconstrained environment, several CDC violations are anticipated. CDC ana
 * All of the signals, whether single-bit or multi-bit, originate from the CaliptraClockDomain clock and their endpoint is the JTAG clock domain.
 * The violations occur on the read path to the JTAG.
 * We only need to synchronize the controlling signal for this interface.
-* Inside the dmi\_wrapper, the dmi\_reg\_en and dmi\_reg\_rd\_en comes from dmi\_jtag\_to\_core\_sync, which is a 2FF synchronizer.
+* Inside the dmi\_wrapper, the reg\_en and reg\_wr\_en come from dmi\_jtag\_to\_core\_sync, which is a 2FF synchronizer.
 
 The following code snippets and schematic diagrams illustrate the CDC violations that end at the JTAG interface.
 
@@ -1184,7 +1184,7 @@ The following code snippets and schematic diagrams illustrate the CDC violations
 
 ## CDC analysis conclusions
 * Missing synchronizers appear to be the result of “inferred” and/or only 2-FF instantiated synchronizers.
-    * dmi\_jtag\_to\_core\_sync.v contains inferred 2FF synchronizers on the control signals “dmi\_reg\_wr\_en” and “dmi\_reg\_rd\_en”.
+    * dmi\_jtag\_to\_core\_sync.v contains inferred 2FF synchronizers on the control signals “wr\_en” and “rd\_en”.
     * 2FF synchronizer inferences are considered non-compliant and should be replaced by an explicitly instantiated synchronization module, which is intended to be substituted on a per-integrator basis.
         * cdc report scheme two\_dff -severity violation
 * Multi-bit signals are effectively pseudo-static and are qualified by synchronized control qualifiers.
@@ -1240,8 +1240,8 @@ The following table shows the false paths between various reset groups.
 | Launch flop reset | Capture flop reset | Comment |
 | ------------------| ------------------ | ------- |
 | CPTRA_PWRGD        | all other groups   | CPTRA_PWRGD is the deepest reset domain, so all RDC paths from CPTRA_PWRGD can be set as false paths                      |
-| CPTRA_RST          | CPTRA_UC_RST       | Boot FSM is reset by CPTRA_RST                                                                                            |
-| CPTRA_RST          | CPTRA_NON_CORE_RST | Boot FSM is reset by CPTRA_RST                                                                                            |
+| CPTRA_RST          | CPTRA_UC_RST       | Boot FSM asserts CPTRA_UC_RST when CPTRA_RST is asserted                                                                  |
+| CPTRA_RST          | CPTRA_NON_CORE_RST | Boot FSM asserts CPTRA_NON_CORE_RST when CPTRA_RST is asserted                                                            |
 | CPTRA_NON_CORE_RST | CPTRA_RST          | CPTRA_NON_CORE_RST can be asserted only by asserting CPTRA_RST                                                            |
 | CPTRA_NON_CORE_RST | CPTRA_UC_RST       | CPTRA_NON_CORE_RST can be asserted only by asserting CPTRA_RST<br>Asserting CPTRA_RST means CPTRA_UC_RST will be asserted |                                       |
 
@@ -1269,10 +1269,10 @@ The following table defines the order in which resets can get asserted. A ">>" i
 The following set of constraints and assumptions must be provided before running RDC structural analysis of Caliptra Core IP.
 
 1. Caliptra Core IP assumes the primary reset inputs are already synchronized to their respective clocks. The integrator must add external reset synchronizers to achieve the same.
-    - *cptra_pwrgood* and *cptra_rst_b* resets must be synchronized to *cptra_clk*
-    - Deassertion of *jtag_trst_n* reset must be synchronized to *jtag_clk*. The signal can be asserted asynchronously.
+    - *cptra_pwrgood* and *cptra_rst_b* resets must be synchronized to *clk*
+    - Deassertion of *jtag_trst_n* reset must be synchronized to *jtag_tck*. The signal can be asserted asynchronously.
 2. The following debug register, which is driven from JTAG, is not toggled during functional flow.
-    - u_caliptra.rvtop.veer.dbg.dmcontrol_reg[0] = 0
+    - caliptra_top.rvtop.veer.dbg.dmcontrol_reg[0] = 0
 3. Set *scan_mode* to 0 for functional analysis.
 4. Stamp or create functional resets for *cptra_noncore_rst_b* and *cptra_uc_rst_b* at the definition points, as mentioned in *Table 22*.
 5. Create funtional reset grouping - This step must be customized as per the EDA tool, which is being used for RDC analysis. The goal of this customization is to achieve the following three sequencing requirements/constraints.
