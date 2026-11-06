@@ -198,6 +198,7 @@ jobs:
       pages: write
       id-token: write
       contents: read
+      actions: write
 
     environment:
       name: github-pages
@@ -242,6 +243,22 @@ jobs:
           if [ -d "nightly-results" ]; then
             rsync -a --exclude='.git' --exclude='.github' nightly-results/nightly-results-main/ /tmp/pages-docs/nightly-results-main/
           fi
+
+      # A re-run keeps the previous attempt's github-pages artifact, so
+      # upload-pages-artifact would add a second one and deploy-pages would abort
+      # with "Multiple artifacts named github-pages". Delete any stale copy first.
+      - name: Remove stale github-pages artifact from earlier attempts
+        if: github.run_attempt != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ids=$(gh api --paginate \
+            "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" \
+            --jq '.artifacts[] | select(.name == "github-pages") | .id')
+          for id in $ids; do
+            echo "Deleting stale github-pages artifact $id"
+            gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id"
+          done
 
       - name: Generate GitHub Pages artifacts
         uses: actions/upload-pages-artifact@v3
